@@ -1,5 +1,7 @@
+from pexpect import pxssh
 from email.mime import image
-from posixpath import split
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 import pexpect
 import getpass
 import json
@@ -28,7 +30,7 @@ image_version = image_attributes[5]
 #print(image_id)
 #print(image_version)
 
-def versa_find_attribute(command_output, matching_string):
+def versa_parse_output(command_output, matching_string):
     variable_get = re.findall(r"[\n\r].*" + matching_string + "\s*([^\n\r\t]*)", command_output)
     return variable_get[0]
 
@@ -39,6 +41,55 @@ def die(child, errstr):
     child.terminate()
     exit(1)
 
+
+def versa_get_attributes(ch):
+    correct_image_exists = False
+    image_check = False
+    vsh_running = False
+    #Initial login
+    ch.sendline(password)
+    ch.expect([prompt, pexpect.EOF, pexpect.TIMEOUT])
+    #Check vsh status
+    ch.sendline('vsh status')
+    ch.expect(['admin:', pexpect.EOF, pexpect.TIMEOUT])
+    ch.sendline(password)
+    ch.expect([prompt, pexpect.EOF, pexpect.TIMEOUT])
+    output_status = ch.before.decode()
+
+    #Check package file
+    ch.sendline('ls /home/versa/packages') 
+    ch.expect([prompt, pexpect.EOF, pexpect.TIMEOUT])
+    output_ls = ch.before.decode()
+
+    #Check vsh details
+    ch.sendline('vsh details') 
+    ch.expect([prompt, pexpect.EOF, pexpect.TIMEOUT])
+    output_vsh = ch.before.decode()
+    ch.sendline('exit')
+
+    if "Stopped" in output_status:
+        vsh_running = False
+    else:
+        vsh_running = True
+
+    if image_filename in output_ls:
+        correct_image_exists = True
+    else:
+        correct_image_exists = False
+    active_sn = versa_parse_output(output_vsh, "Serial number")
+    active_version = versa_parse_output(output_vsh, "Release")
+    active_id = versa_parse_output(output_vsh, "Package id")
+    active_date = versa_parse_output(output_vsh, "Release date")
+
+    if active_version == image_version and active_id == image_id and active_date == image_date:
+        image_check = True
+        return True, image_check, correct_image_exists, vsh_running
+    else:
+        image_check = False
+        return False, image_check, correct_image_exists, vsh_running
+
+
+
 def versa_connect():
     """
     Connects to the device and gets the required attributes before we continue.
@@ -46,6 +97,7 @@ def versa_connect():
     Current Image Version
     """
     start_time = time.time()
+    upgrade_required = True
     while time.time() - start_time <= max_retry_timeout:
         ch = pexpect.spawn(f'ssh {username}@{hostname}', timeout=30, maxread=65535)
         session_callback = ch.expect([pexpect.TIMEOUT, pexpect.EOF, 'yes/no', 'assword:', 'Connection refused', prompt] )
@@ -60,27 +112,9 @@ def versa_connect():
             ch.sendline(password)
             ch.expect(prompt)
         elif session_callback == 3:
-            ch.sendline(password)
-            ch.expect([prompt, pexpect.EOF, pexpect.TIMEOUT])
-            output_ls = ch.before.decode()
-            ch.sendline('vsh details') 
-            ch.expect([prompt, pexpect.EOF, pexpect.TIMEOUT])
-            output_vsh = ch.before.decode()
-            ch.sendline('exit')
-            print(output_vsh)
-            if image_version in output_ls:
-                print("success" + image_version)
-            else:
-                print("failed" + image_version)
-            curr_conn_sn = versa_find_attribute(output_vsh, "Serial number")
-            curr_conn_release_version = versa_find_attribute(output_vsh, "Release")
-            curr_conn_release_id = versa_find_attribute(output_vsh, "Package id")
-            curr_conn_release_date = versa_find_attribute(output_vsh, "Release date")
-            print(curr_conn_release_id)
-            print(curr_conn_release_date)
-            print(curr_conn_release_version)
-            print(curr_conn_sn)
-            return True, curr_conn_release_version==image_version, 
+            versa_attributes = versa_get_attributes(ch)
+            print(versa_attributes[1])
+            return True, versa_attributes[1], versa_attributes[2], versa_attributes[3]
 
         elif session_callback == 4:
             time.sleep(0.5)
@@ -92,6 +126,10 @@ def versa_connect():
 
 def main():
     versa_variables = versa_connect()
+    #Versa_variables[0] = Login ok
+    #Versa_variables[1] = Version OK
+    #versa_variables[2] = Image file ok
+
     print(versa_variables)
 if __name__ == '__main__':
     main()
