@@ -13,9 +13,11 @@ password = "versa123"
 
 def versa_find_attribute(command_output, matching_string):
     variable_get = re.findall(r"[\n\r].*" + matching_string + "\s*([^\n\r\t]*)", command_output)
-    return variable_get
+    return variable_get[0]
 
-
+def versa_connect()
+    start_time = time.time()
+    while time.time() - start_time <= max_retry_timeout:
 ch = pexpect.spawn(f'ssh {username}@{hostname}')
 #ch.logfile = sys.stdout.buffer
 ch.expect('assword:')
@@ -27,9 +29,11 @@ output = ch.before.decode()
 ch.sendline('exit')
 serial_number = versa_find_attribute(output, "Serial number")
 release = versa_find_attribute(output, "Release")
-package_name = versa_find_attribute(output, "Package name")
 print(serial_number)
 print(release)
-print(package_name)
 
+def main():
+    
 
+if __name__ == '__main__':
+    main()
