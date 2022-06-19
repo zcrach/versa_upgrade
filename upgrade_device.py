@@ -41,6 +41,7 @@ hosts_path = "/home/versaupgrade/.ssh/known_hosts"
 
 #Change to whatever E-mail you want to use to send/recieve. 
 sender_address = 'exampleemail@gmail.com'
+#This is not the normal login password, you'll have to get one that can be used for these services. 
 sender_pass = 'examplepassword'
 receiver_address = 'exampleemail@gmail.com'
 
