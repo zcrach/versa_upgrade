@@ -13,16 +13,43 @@ import subprocess
 from datetime import datetime
 import smtplib
 from requests import session
-global max_retry_timeout, image_version, script_is_running, completed_file, image_filename, image_date, image_id, hosts_path
+global max_retry_timeout, image_version, script_is_running, completed_file, image_filename, image_date, image_id, hosts_path, sender_address, sender_pass, receiver_address
 import os
 
-#VARIABLES YOU CAN CHANGE
+
+
+
+
+###############################################
+####### Variables you can change ##############
+###############################################
+
+
+
+
+#Image file name, KEEP ORIGIONAL NAME FORMATTING, IT'S USED IN THE SCRIPT AND TO VERIFY IMAGE. 
 image_filename = "versa-flexvnf-20220420-131241-eca39c5-21.1.4-wsm.bin"
+
+#File used to register all upgraded devices. 
 completed_file = "completed_devices.txt"
+
+#IP used for the port
 hostname = "172.16.102.1"
+
+#Path to the ssh hosts file, we need to delete it as the IP stays the same but the ssh key changes with device swap. 
 hosts_path = "/home/versaupgrade/.ssh/known_hosts"
 
-#DONT TOUCH THESE VARIABLES
+#Change to whatever E-mail you want to use to send/recieve. 
+sender_address = 'exampleemail@gmail.com'
+sender_pass = 'examplepassword'
+receiver_address = 'exampleemail@gmail.com'
+
+
+
+
+###############################################
+###### DONT TOUCH THESE VARIABLES #############
+###############################################
 prompt = "\$"
 script_is_running = True
 username = "admin"
@@ -145,9 +172,7 @@ def send_mail():
             {output_interfaces}\n\
             '
         #The mail addresses and password
-        sender_address = 'versaupgradescript@gmail.com'
-        sender_pass = 'cjkshcimrrpgobfg'
-        receiver_address = 'versaupgradescript@gmail.com'
+
         #Setup the MIME
         message = MIMEMultipart()
         message['From'] = sender_address
@@ -165,6 +190,7 @@ def send_mail():
         print("Mail sent")
     except:
         print("Mail not sent")
+        print("Confirm you have the correct login details")
 
 
 def device_completed_steps():
