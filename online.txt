@@ -1,0 +1,13 @@
+Currently using session_callback: 3
+(True, True, True, True, True)
+            Versa login         : True
+            Versa Version       : True
+            Versa Image file    : True
+            Versa statuses      : True
+            Versa VSH available : True
+            
+Login successful
+All services are running
+Correct image version exists on device
+Device checks completed and device successfully upgraded, waiting 5 minutes
+Device already exists in list, nothing is done.
