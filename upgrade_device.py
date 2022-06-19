@@ -71,7 +71,7 @@ def die(child, errstr):
     
 def send_and_expect(ch, send, expect):
     """
-    Send and Expect with pexpect.
+    Send and Expect with pexpect, return decoded output.
     """
     ch.sendline(send)
     ch.expect([expect, pexpect.EOF, pexpect.TIMEOUT])
@@ -308,8 +308,6 @@ def main():
                         time.sleep(300)
                     else:
                         print("upload of file successful")
-
-
 
             else:
                 print("Some services have stopped")
