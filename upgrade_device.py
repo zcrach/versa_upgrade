@@ -16,16 +16,9 @@ from requests import session
 global max_retry_timeout, image_version, script_is_running, completed_file, image_filename, image_date, image_id, hosts_path, sender_address, sender_pass, receiver_address
 import os
 
-
-
-
-
 ###############################################
 ####### Variables you can change ##############
 ###############################################
-
-
-
 
 #Image file name, KEEP ORIGIONAL NAME FORMATTING, IT'S USED IN THE SCRIPT AND TO VERIFY IMAGE. 
 image_filename = "versa-flexvnf-20220420-131241-eca39c5-21.1.4-wsm.bin"
@@ -46,11 +39,10 @@ sender_pass = 'examplepassword'
 receiver_address = 'exampleemail@gmail.com'
 
 
-
-
 ###############################################
 ###### DONT TOUCH THESE VARIABLES #############
 ###############################################
+
 prompt = "\$"
 script_is_running = True
 username = "admin"
@@ -85,6 +77,7 @@ def send_and_expect(ch, send, expect):
     ch.expect([expect, pexpect.EOF, pexpect.TIMEOUT])
     output = ch.before.decode()
     return output
+
 
 def versa_get_attributes(ch):
     """
@@ -122,6 +115,7 @@ def versa_get_attributes(ch):
         image_check = False
         return False, image_check, correct_image_exists, vsh_running
 
+
 def scp_image_file_upload():
     """
     Upload image to device if it does not already exist.
@@ -133,8 +127,6 @@ def scp_image_file_upload():
         return True
     except:
         return False
-
-
 
 
 def send_mail():
@@ -214,6 +206,7 @@ def device_completed_steps():
         print("Adding device and sending E-mail containing interface and vsh output")
         send_mail()
 
+
 def versa_upgrade():
     """
     Runs the command required to upgrade the device.
@@ -229,6 +222,7 @@ def versa_upgrade():
         return True
     except:
         return False
+
 
 def versa_connect():
     """
@@ -263,6 +257,7 @@ def versa_connect():
             break
     else:
         return False
+
 
 def main():
     #resets the sn variable. 
