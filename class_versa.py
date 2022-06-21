@@ -1,25 +1,35 @@
 import logging, pexpect, time, re, sys, subprocess, os
 global device_completed, hosts_path
-device_completed = False
+
+
+####################################################################################
+############################# Variables you can change #############################
+####################################################################################
 
 hosts_path = "/home/versaupgrade/.ssh/known_hosts"
+
 image_filename = "versa-flexvnf-20220420-131241-eca39c5-21.1.4-wsm.bin"
+
+
+####################################################################################
+#################################### DONT TOUCH ####################################
+####################################################################################
+device_completed = False
 hostname = "172.16.102.1"
 username = "admin"
 password = "versa123"
 prompt = "\$"
 
-
 class Versa:
-    def __init__(self, serial_number, release, package_id, release_date, package_folder, vsh_status, show_interfaces):
+    def __init__(self, serial_number, release, package_id, release_date, vsh_details, package_folder, vsh_status, show_interfaces):
         self.serial_number = serial_number
         self.release = release
         self.package_id = package_id
         self.release_date = release_date
+        self.vsh_details = vsh_details
         self.package_folder = package_folder
         self.vsh_status = vsh_status
         self.show_interfaces = show_interfaces
-
 
 class VersaAttributes:
     def __init__(self, ch):
@@ -73,13 +83,14 @@ class VersaConnect:
         elif session_callback == 2:
             VersaConnect.send_and_expect(self, ch, 'yes', 'assword:')
             VersaConnect.send_and_expect(self, ch, password, prompt)
-            return False
+            return True
         elif session_callback == 3:
             VersaConnect.send_and_expect(self, ch, password, prompt)
             VersaConnect.login.serial_number = VersaAttributes.versa_parse_output(self, ch, "vsh details", "Serial number")
             VersaConnect.login.release = VersaAttributes.versa_parse_output(self, ch, "vsh details", "Release")
             VersaConnect.login.package_id = VersaAttributes.versa_parse_output(self, ch, "vsh details", "Package id")
             VersaConnect.login.release_date = VersaAttributes.versa_parse_output(self, ch, "vsh details", "Release date")
+            VersaConnect.login.vsh_details = VersaConnect.send_and_expect(self, ch, 'vsh details', prompt)
             VersaConnect.login.package_folder = VersaConnect.send_and_expect(self, ch, 'ls /home/versa/packages', prompt)
             VersaConnect.send_and_expect(self, ch, 'vsh status', "admin:")
             VersaConnect.login.vsh_status = VersaConnect.send_and_expect(self, ch, password, prompt)
@@ -113,52 +124,56 @@ def main():
     try:
         os.remove(hosts_path)
     except:
-        pass
+        logging.info(f"Unable to delete hosts file, it either does not exist, has the wrong privileges or path: {hosts_path}")
     level = logging.DEBUG
     fmt = '[%(levelname)s] %(asctime)s - %(message)s'
     logging.basicConfig(level=level, format=fmt)
-    while True:
-        versa_login = VersaConnect(hostname, username, password)
-        if not versa_login.login():
-            logging.info("Unable to login, will try again in a few minutes.")
-        else:
-            versa_login.login()
-            Versa_CPE = Versa(versa_login.login.serial_number, versa_login.login.release, versa_login.login.package_id, versa_login.login.release_date, versa_login.login.package_folder, versa_login.login.vsh_status, versa_login.login.show_interfaces)
-
-            if "Stopped" in Versa_CPE.vsh_status:
-                logging.info("Some services have stopped, will try again in 2 minutes.")
-                time.sleep(120)
+    try:
+        while True:
+            versa_login = VersaConnect(hostname, username, password)
+            if not versa_login.login():
+                logging.info("Unable to login, will try again in one minute.")
+                time.sleep(60)
             else:
-                logging.info("All services are running")
-                if all(k in image_filename for k in (Versa_CPE.release, Versa_CPE.package_id, Versa_CPE.release_date)):
-                    logging.info(f"Device has the correct Version {Versa_CPE.release}")
-                    if "WAN1-Transport-VR" in Versa_CPE.show_interfaces:
-                        logging.info(f"Device has WAN interface in correct VRF.")
-                        logging.info(f"Device with Serial Number {Versa_CPE.serial_number} is completed, will stop script for 10 minutes.")
-                        device_completed = True
-                        time.sleep(600)
-                    else:
-                        logging.error(f"No WAN interface with the WAN1-Transport-VR VRF, will try again after 2 minutes.")
-                        time.sleep(120)
+                versa_login.login()
+                Versa_CPE = Versa(versa_login.login.serial_number, versa_login.login.release, versa_login.login.package_id, versa_login.login.release_date, versa_login.login.vsh_details, versa_login.login.package_folder, versa_login.login.vsh_status, versa_login.login.show_interfaces)
+                
+                if "Stopped" in Versa_CPE.vsh_status:
+                    logging.info("Some services have stopped, will try again in 2 minutes.")
+                    time.sleep(120)
                 else:
-                    logging.info(f"Device has the wrong version installed: {Versa_CPE.release}")
-                    if image_filename in Versa_CPE.package_folder:
-                        logging.info(f"Image found in /home/versa/packages/")
-                        if not versa_login.upgrade():
-                            logging.error(f"Unable to complete upgrade, will try again in 2 minutes.")
-                            time.sleep(120)
-                        else:
-                            logging.info(f"Starting upgrade, waiting 10 minutes.")
+                    logging.info("All services are running")
+                    if all(k in image_filename for k in (Versa_CPE.release, Versa_CPE.package_id, Versa_CPE.release_date)):
+                        logging.info(f"Device has the correct Version {Versa_CPE.release}")
+                        if "WAN1-Transport-VR" in Versa_CPE.show_interfaces:
+                            logging.info(f"Device has WAN interface in correct VRF.")
+                            logging.info(f"Device with Serial Number {Versa_CPE.serial_number} is completed, will stop script for 10 minutes.")
+                            with open(f"completed_devices/{Versa_CPE.serial_number}.txt", "w") as f:
+                                f.write(f"Start of file\n {Versa_CPE.serial_number} \n {Versa_CPE.vsh_details} \n {Versa_CPE.vsh_status} \n {Versa_CPE.show_interfaces}\n end of file\n")
+                            device_completed = True
                             time.sleep(600)
-                    else:
-                        logging.info(f"Image not found in /home/versa/packages, proceeding with upload")
-                        if not versa_login.upload():
-                            logging.error(f"Unable to upload image, will try again in 2 minutes.")
-                            time.sleep(120)
                         else:
-                            logging.info(f"{image_filename} uploaded to /home/versa/packages")
-                            time.sleep(5)
-
+                            logging.error(f"No WAN interface with the WAN1-Transport-VR VRF, will try again after 2 minutes.")
+                            time.sleep(120)
+                    else:
+                        logging.info(f"Device has the wrong version installed: {Versa_CPE.release}")
+                        if image_filename in Versa_CPE.package_folder:
+                            logging.info(f"Image found in /home/versa/packages/")
+                            if not versa_login.upgrade():
+                                logging.error(f"Unable to complete upgrade, will try again in 2 minutes.")
+                                time.sleep(120)
+                            else:
+                                logging.info(f"Starting upgrade, waiting 10 minutes.")
+                                time.sleep(600)
+                        else:
+                            logging.info(f"Image not found in /home/versa/packages, proceeding with upload")
+                            if not versa_login.upload():
+                                logging.error(f"Unable to upload image, will try again in 2 minutes.")
+                                time.sleep(120)
+                            else:
+                                logging.info(f"{image_filename} uploaded to /home/versa/packages")
+                                time.sleep(5)
+    except KeyboardInterrupt:
+        logging.warning(f"Session has been stopped with Ctrl+C.")
 if __name__ == '__main__':
     main()
-
