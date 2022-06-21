@@ -106,6 +106,6 @@ vni-0/7      ac:43:30:00:97:c0  down   down   -       -
 vni-0/8      ac:43:30:00:97:c1  down   down   -       -                                          
 vni-0/9      ac:43:30:00:97:c2  down   down   -       -                                          
 
-[ok][2022-06-21 14:33:36]
+[ok][2022-06-21 14:44:27]
 admin@versa-flexvnf-
  end of file
